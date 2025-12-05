@@ -161,7 +161,7 @@ public class BackgroundPrintService extends IntentService {
                                 }
                             }
 
-                            else if ("invoice".equals(type)) {
+                            else if ("invoice".equals(type) || "Invoice".equals(type)) {
                                 JSONObject details = response.getJSONObject("details");
                                 JSONArray printers = response.getJSONArray("printers");
                                 JSONObject payData = response.getJSONObject("data");

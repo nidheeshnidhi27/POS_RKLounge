@@ -11,7 +11,9 @@ import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 public class PayableHandler {
@@ -150,6 +152,7 @@ public class PayableHandler {
 
             Iterator<String> categories = details.keys();
             while (categories.hasNext()) {
+
                 JSONObject items = details.getJSONObject(categories.next());
                 Iterator<String> itemIds = items.keys();
 
@@ -166,41 +169,86 @@ public class PayableHandler {
 
                     totalItems += quantity;
 
-                    // ✅ Print item name first
+                    // ------------ WORD WRAP FUNCTION FOR ITEM NAME ----------
+                    int maxNameWidth = 32;  // Adjust for printer width
+
+                    List<String> nameLines = new ArrayList<>();
+                    String[] words = itemName.split(" ");
+                    StringBuilder current = new StringBuilder();
+
+                    for (String w : words) {
+                        if (current.length() + w.length() + 1 > maxNameWidth) {
+                            nameLines.add(current.toString());
+                            current = new StringBuilder(w);
+                        } else {
+                            if (current.length() > 0) current.append(" ");
+                            current.append(w);
+                        }
+                    }
+                    nameLines.add(current.toString());
+                    // --------------------------------------------------------
+
+                    // ---------- FIRST LINE (with qty + amount right aligned) ----------
+                    String firstLineName = nameLines.get(0);
+                    String firstLine = String.format("%.0f x %-"+maxNameWidth+"s", quantity, firstLineName);
+
+                    output.write(firstLine.getBytes());
+
                     if (amount > 0) {
-                        // Item has valid amount
-                        String mainLine = String.format("%.0f x %-33s", quantity, itemName);
-                        output.write(mainLine.getBytes());
-                        output.write(new byte[]{(byte) 0x9C}); // £ symbol
+                        output.write(new byte[]{(byte) 0x9C});  // £
                         double amountNew = quantity * amount;
-                        output.write(String.format("%.2f\n", amountNew).getBytes());
-                    } else {
-                        // Item has 0 amount — show only name (no price)
-                        String mainLine = String.format("%.0f x %s\n", quantity, itemName);
-                        output.write(mainLine.getBytes());
+                        output.write(String.format("%.2f", amountNew).getBytes());
+                    }
+                    output.write("\n".getBytes());
+                    // --------------------------------------------------------------------
+
+                    // -------- REMAINING WRAPPED LINES (NO AMOUNT) --------
+                    for (int i = 1; i < nameLines.size(); i++) {
+                        output.write(("    " + nameLines.get(i) + "\n").getBytes());
                     }
 
-                    // ✅ Handle addons
+                    // ---------------- ADDONS ----------------
                     if (hasAddon) {
                         Iterator<String> addonKeys = addonObj.keys();
                         while (addonKeys.hasNext()) {
                             JSONObject addon = addonObj.getJSONObject(addonKeys.next());
+
                             String adName = addon.getString("ad_name");
                             double adQty = Double.parseDouble(addon.getString("ad_qty"));
                             double adPrice = Double.parseDouble(addon.getString("ad_price"));
 
-//                            totalItems += adQty;
+                            // WRAP ADDON NAMES ALSO
+                            List<String> addonLines = new ArrayList<>();
+                            String[] adWords = adName.split(" ");
+                            StringBuilder adCurrent = new StringBuilder();
+
+                            int addonWidth = 29;  // keeps addon alignment clean
+
+                            for (String w : adWords) {
+                                if (adCurrent.length() + w.length() + 1 > addonWidth) {
+                                    addonLines.add(adCurrent.toString());
+                                    adCurrent = new StringBuilder(w);
+                                } else {
+                                    if (adCurrent.length() > 0) adCurrent.append(" ");
+                                    adCurrent.append(w);
+                                }
+                            }
+                            addonLines.add(adCurrent.toString());
+
+                            // First addon line (with price)
+                            String adFirst = String.format("   %.0f x %-"+addonWidth+"s", adQty, addonLines.get(0));
+                            output.write(adFirst.getBytes());
+
                             if (adPrice > 0) {
-                                // Addon with price
-                                String adLine = String.format("   %.0f x %-30s", adQty, adName);
-                                output.write(adLine.getBytes());
-                                output.write(new byte[]{(byte) 0x9C}); // £ symbol
+                                output.write(new byte[]{(byte) 0x9C});
                                 double priceNew = adQty * adPrice;
-                                output.write(String.format("%.2f\n", priceNew).getBytes());
-                            } else {
-                                // Addon without price
-                                String adLine = String.format("   %.0f x %s\n", adQty, adName);
-                                output.write(adLine.getBytes());
+                                output.write(String.format("%.2f", priceNew).getBytes());
+                            }
+                            output.write("\n".getBytes());
+
+                            // Remaining addon wrapped lines
+                            for (int i = 1; i < addonLines.size(); i++) {
+                                output.write(("       " + addonLines.get(i) + "\n").getBytes());
                             }
                         }
                     }
@@ -211,6 +259,7 @@ public class PayableHandler {
             }
 
             output.write("-------------------------------------------\n".getBytes());
+
 
             ///////////////////////////
 
@@ -444,10 +493,12 @@ public class PayableHandler {
 
             Iterator<String> categories = details.keys();
             while (categories.hasNext()) {
+
                 JSONObject items = details.getJSONObject(categories.next());
                 Iterator<String> itemIds = items.keys();
 
                 while (itemIds.hasNext()) {
+
                     JSONObject item = items.getJSONObject(itemIds.next());
                     output.write(ESC_FONT_SIZE_MEDIUM);
 
@@ -460,41 +511,87 @@ public class PayableHandler {
 
                     totalItems += quantity;
 
-                    // ✅ Print item name first
+                    // ---------------- WORD WRAP ITEM NAME ----------------
+                    int maxWidth = 32; // item width before price starts
+
+                    List<String> wrappedLines = new ArrayList<>();
+                    String[] words = itemName.split(" ");
+                    StringBuilder current = new StringBuilder();
+
+                    for (String w : words) {
+                        if (current.length() + w.length() + 1 > maxWidth) {
+                            wrappedLines.add(current.toString());
+                            current = new StringBuilder(w);
+                        } else {
+                            if (current.length() > 0) current.append(" ");
+                            current.append(w);
+                        }
+                    }
+                    if (current.length() > 0) wrappedLines.add(current.toString());
+                    // ------------------------------------------------------
+
+                    // ------------ FIRST LINE WITH PRICE RIGHT ALIGN --------
+                    String first = wrappedLines.get(0);
+                    String mainLine = String.format("%.0f x %-"+maxWidth+"s", quantity, first);
+                    output.write(mainLine.getBytes());
+
                     if (amount > 0) {
-                        // Item has valid amount
-                        String mainLine = String.format("%.0f x %-33s", quantity, itemName);
-                        output.write(mainLine.getBytes());
                         output.write(new byte[]{(byte) 0x9C}); // £ symbol
-                        double amountNew =  quantity * amount;
-                        output.write(String.format("%.2f\n", amountNew).getBytes());
+                        double totalAmt = quantity * amount;
+                        output.write(String.format("%.2f\n", totalAmt).getBytes());
                     } else {
-                        // Item has 0 amount — show only name (no price)
-                        String mainLine = String.format("%.0f x %s\n", quantity, itemName);
-                        output.write(mainLine.getBytes());
+                        output.write("\n".getBytes());
                     }
 
-                    // ✅ Handle addons
+                    // -------- REMAINING WRAPPED LINES (NO PRICE) -----------
+                    for (int i = 1; i < wrappedLines.size(); i++) {
+                        output.write(("    " + wrappedLines.get(i) + "\n").getBytes());
+                    }
+
+                    // ------------------- ADDONS ----------------------------
                     if (hasAddon) {
+
                         Iterator<String> addonKeys = addonObj.keys();
                         while (addonKeys.hasNext()) {
-                            JSONObject addon = addonObj.getJSONObject(addonKeys.next());
-                            String adName = addon.getString("ad_name");
-                            double adQty = Double.parseDouble(addon.getString("ad_qty"));
-                            double adPrice = Double.parseDouble(addon.getString("ad_price"));
 
-//                            totalItems += adQty;
+                            JSONObject addon = addonObj.getJSONObject(addonKeys.next());
+
+                            String adName = addon.optString("ad_name", "");
+                            double adQty  = Double.parseDouble(addon.optString("ad_qty", "0"));
+                            double adPrice = Double.parseDouble(addon.optString("ad_price", "0"));
+
+                            // ---- Word wrap addon name ----
+                            int addonWidth = 29;
+                            List<String> addonLines = new ArrayList<>();
+                            String[] adWords = adName.split(" ");
+                            StringBuilder adb = new StringBuilder();
+
+                            for (String w : adWords) {
+                                if (adb.length() + w.length() + 1 > addonWidth) {
+                                    addonLines.add(adb.toString());
+                                    adb = new StringBuilder(w);
+                                } else {
+                                    if (adb.length() > 0) adb.append(" ");
+                                    adb.append(w);
+                                }
+                            }
+                            if (adb.length() > 0) addonLines.add(adb.toString());
+
+                            // ----- First addon line (with price) -----
+                            String adFirst = String.format("   %.0f x %-"+addonWidth+"s", adQty, addonLines.get(0));
+                            output.write(adFirst.getBytes());
+
                             if (adPrice > 0) {
-                                // Addon with price
-                                String adLine = String.format("   %.0f x %-30s", adQty, adName);
-                                output.write(adLine.getBytes());
-                                output.write(new byte[]{(byte) 0x9C}); // £ symbol
-                                double priceNew = adQty * adPrice;
-                                output.write(String.format("%.2f\n", priceNew).getBytes());
+                                output.write(new byte[]{(byte) 0x9C});
+                                double adTotal = adQty * adPrice;
+                                output.write(String.format("%.2f\n", adTotal).getBytes());
                             } else {
-                                // Addon without price
-                                String adLine = String.format("   %.0f x %s\n", adQty, adName);
-                                output.write(adLine.getBytes());
+                                output.write("\n".getBytes());
+                            }
+
+                            // ----- Wrapped addon remaining lines -----
+                            for (int i = 1; i < addonLines.size(); i++) {
+                                output.write(("       " + addonLines.get(i) + "\n").getBytes());
                             }
                         }
                     }
@@ -505,6 +602,7 @@ public class PayableHandler {
             }
 
             output.write("-------------------------------------------\n".getBytes());
+
 
             String subtotal = data.getString("sub_total");
             output.write(paddedLine(subtotalLabel, subtotal));
@@ -676,104 +774,110 @@ public class PayableHandler {
             output.write("\n-------------------------------------------\n".getBytes());
 
             JSONArray itemsArray = getDetailsArray();
+
             for (int i = 0; i < itemsArray.length(); i++) {
+
                 JSONObject item = itemsArray.getJSONObject(i);
                 output.write(ESC_FONT_SIZE_MEDIUM);
 
                 String itemName = item.optString("item", "");
                 double quantity = parseSafeDouble(item.optString("quantity", "0"));
                 double amount = parseSafeDouble(item.optString("amount", "0"));
+
                 JSONArray addonArray = item.optJSONArray("addon");
                 boolean hasAddon = addonArray != null && addonArray.length() > 0;
 
                 totalItems += quantity;
 
-                // ✅ Main item line
+                // ---------------- WORD WRAP FOR ITEM NAME ----------------
+                int maxNameWidth = 32; // Adjust based on printer width
+                List<String> nameLines = new ArrayList<>();
+                String[] words = itemName.split(" ");
+                StringBuilder current = new StringBuilder();
+
+                for (String w : words) {
+                    if (current.length() + w.length() + 1 > maxNameWidth) {
+                        nameLines.add(current.toString());
+                        current = new StringBuilder(w);
+                    } else {
+                        if (current.length() > 0) current.append(" ");
+                        current.append(w);
+                    }
+                }
+                if (current.length() > 0) nameLines.add(current.toString());
+                // ----------------------------------------------------------
+
+                // -------- FIRST LINE WITH AMOUNT RIGHT ALIGNED ----------
+                String firstLineName = nameLines.get(0);
+                String firstLine = String.format("%.0f x %-"+maxNameWidth+"s", quantity, firstLineName);
+                output.write(firstLine.getBytes("CP437"));
+
                 if (amount > 0) {
-                    String mainLine = String.format("%.0f x %-33s", quantity, itemName);
-                    output.write(mainLine.getBytes("CP437"));
-                    output.write(new byte[]{(byte) 0x9C}); // £ symbol
+                    output.write(new byte[]{(byte) 0x9C}); // £
                     double amountNew = quantity * amount;
-                    output.write(String.format("%.2f\n", amountNew).getBytes("CP437"));
-                } else {
-                    String mainLine = String.format("%.0f x %s\n", quantity, itemName);
-                    output.write(mainLine.getBytes("CP437"));
+                    output.write(String.format("%.2f", amountNew).getBytes("CP437"));
+                }
+                output.write("\n".getBytes());
+                // ----------------------------------------------------------
+
+                // -------- REMAINING WRAPPED LINES (NO PRICE) ------------
+                for (int k = 1; k < nameLines.size(); k++) {
+                    output.write(("    " + nameLines.get(k) + "\n").getBytes("CP437"));
                 }
 
-                // ✅ Handle Addons safely
+                // ---------------- ADDONS ----------------
                 if (hasAddon) {
                     for (int j = 0; j < addonArray.length(); j++) {
+
                         JSONObject addon = addonArray.getJSONObject(j);
 
                         String adName = addon.optString("ad_name", "").trim();
                         double adQty = parseSafeDouble(addon.optString("ad_qty", "0"));
                         double adPrice = parseSafeDouble(addon.optString("ad_price", "0"));
 
-                        if (adName.isEmpty() && adQty == 0 && adPrice == 0) {
-                            // Skip blank addon rows
-                            continue;
+                        if (adName.isEmpty()) continue;
+
+                        // ----- Word wrap addon name -----
+                        int addonWidth = 29;
+                        List<String> addonLines = new ArrayList<>();
+                        String[] adWords = adName.split(" ");
+                        StringBuilder adCurrent = new StringBuilder();
+
+                        for (String w : adWords) {
+                            if (adCurrent.length() + w.length() + 1 > addonWidth) {
+                                addonLines.add(adCurrent.toString());
+                                adCurrent = new StringBuilder(w);
+                            } else {
+                                if (adCurrent.length() > 0) adCurrent.append(" ");
+                                adCurrent.append(w);
+                            }
                         }
+                        if (adCurrent.length() > 0) addonLines.add(adCurrent.toString());
+
+                        // ----- First addon line (with price) -----
+                        String adFirst = String.format("   %.0f x %-"+addonWidth+"s", adQty, addonLines.get(0));
+                        output.write(adFirst.getBytes("CP437"));
 
                         if (adPrice > 0) {
-                            String adLine = String.format("   %.0f x %-30s", quantity, adName);
-                            output.write(adLine.getBytes("CP437"));
-                            output.write(new byte[]{(byte) 0x9C}); // £ symbol
-                            double pricenew = quantity * adPrice;
-                            output.write(String.format("%.2f\n", pricenew).getBytes("CP437"));
-                        } else {
-                            String adLine = String.format("   %.0f x %s\n", quantity, adName);
-                            output.write(adLine.getBytes("CP437"));
+                            output.write(new byte[]{(byte) 0x9C});
+                            double priceNew = adQty * adPrice;
+                            output.write(String.format("%.2f", priceNew).getBytes("CP437"));
                         }
+                        output.write("\n".getBytes());
 
-//                        totalItems += adQty;
+                        // ----- Remaining wrapped addon lines -----
+                        for (int z = 1; z < addonLines.size(); z++) {
+                            output.write(("       " + addonLines.get(z) + "\n").getBytes("CP437"));
+                        }
                     }
                 }
 
                 output.write("\n".getBytes());
                 output.write(ESC_FONT_SIZE_RESET);
             }
+
 
             output.write("-------------------------------------------\n".getBytes());
-
-
-            /*output.write("\n-------------------------------------------\n".getBytes());
-            JSONArray itemsArray = getDetailsArray();
-            for (int i = 0; i < itemsArray.length(); i++) {
-                JSONObject item = itemsArray.getJSONObject(i);
-                output.write(ESC_FONT_SIZE_MEDIUM);
-                output.write(item.optString("item", "").getBytes());
-                output.write("\n".getBytes());
-                double quantity = Double.parseDouble(item.optString("quantity", "0"));
-                double amount = Double.parseDouble(item.optString("amount", "0"));
-                JSONArray addonArray = item.optJSONArray("addon");
-                boolean printedAddon = false;
-                if (addonArray != null && addonArray.length() > 0) {
-                    for (int j = 0; j < addonArray.length(); j++) {
-                        JSONObject addon = addonArray.getJSONObject(j);
-                        String adName = addon.optString("ad_name", "");
-                        String adQtyStr = addon.optString("ad_qty", "");
-                        String adPriceStr = addon.optString("ad_price", "");
-                        if (!adName.isEmpty() && !adQtyStr.isEmpty() && !adPriceStr.isEmpty()) {
-                            double adQty = Double.parseDouble(adQtyStr);
-                            double adPrice = Double.parseDouble(adPriceStr);
-                            double adTotal = adQty * adPrice; output.write((" " + adName + "\n").getBytes());
-                            String adLine = String.format(" %.0f X %.2f %28s", adQty, adPrice, "");
-                            output.write(adLine.getBytes()); output.write(new byte[]{(byte) 0x9C});
-                            output.write(String.format("%.2f\n", adTotal).getBytes());
-                            totalItems += adQty; printedAddon = true;
-                        }
-                    }
-                }
-                if (!printedAddon) {
-                    double total = quantity * amount;
-                    String line = String.format("%s X %.2f %30s", item.optString("quantity", "0"), amount, "");
-                    output.write(line.getBytes());
-                    output.write(new byte[]{(byte) 0x9C});
-                    output.write(String.format("%.2f\n", total).getBytes());
-                    totalItems += quantity; } output.write("\n".getBytes());
-                output.write(ESC_FONT_SIZE_RESET);
-            }
-            output.write("-------------------------------------------\n".getBytes());*/
 
             output.write(paddedLine(subtotalLabel, data.optString("sub_total", "0.00")));
             String tips = data.optString("tips", "0.00");
