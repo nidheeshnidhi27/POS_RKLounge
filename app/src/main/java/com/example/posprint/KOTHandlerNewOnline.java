@@ -170,10 +170,10 @@ public class KOTHandlerNewOnline {
                     String category = catIterator.next();
                     Object itemObj = categories.get(category);
 
-                    /*formattedText.append(ESC_FONT_SIZE_LARGE)
+                    formattedText.append(ESC_FONT_SIZE_MEDIUM)
                             .append(centerText(category, true))
                             .append(ESC_FONT_SIZE_RESET).append("\n")
-                            .append("-".repeat(45)).append("\n");*/
+                            .append("-".repeat(45)).append("\n");
 
                     // If it's a JSONObject, iterate by keys
                     if (itemObj instanceof JSONObject) {
@@ -195,10 +195,10 @@ public class KOTHandlerNewOnline {
                         }
                     }
 
-//                    formattedText.append("\n").append("-".repeat(45)).append("\n");
+                    formattedText/*.append("\n")*/.append("-".repeat(45)).append("\n");
                 }
             }
-            formattedText.append("\n").append("-".repeat(45)).append("\n");
+//            formattedText/*.append("\n")*/.append("-".repeat(45)).append("\n");
             formattedText.append("Special Instruction: ")
                     .append(orderDetails.optString("instruction")).append("\n")
                     .append("-".repeat(45)).append("\n");

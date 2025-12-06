@@ -10,7 +10,7 @@ import org.json.JSONObject;
 
 import java.util.Iterator;
 
-public class KOTHandler {
+public class KOTHandler_with_cat {
 
     Context context;
     JSONObject response, details;
@@ -21,7 +21,7 @@ public class KOTHandler {
     private static final String ESC_RESET = "\u001B" + "!" + (char) 0;
     private static final String ESC_FONT_SIZE_RESET = "\u001B" + "!" + (char) 0;
 
-    public KOTHandler(Context context, JSONObject response, JSONObject details) {
+    public KOTHandler_with_cat(Context context, JSONObject response, JSONObject details) {
         this.context = context;
         this.response = response;
         this.details = details;
