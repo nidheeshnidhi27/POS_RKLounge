@@ -226,100 +226,131 @@ public class KOTHandlerNewOnline {
     }
 
     private void formatItemBlock(JSONObject item, String category, StringBuilder formattedText) throws JSONException {
-        // Skip main item name for BANQUET NIGHTS
-        if (!category.equalsIgnoreCase("BANQUET NIGHTS")) {
-            String qty = item.optString("quantity");
-            String name = item.optString("item");
 
-// Format same as KOTHandler
-            String line = formatItemLine(qty, name);
+        String qty = item.optString("quantity");
+        String name = item.optString("item");
 
-            formattedText.append(ESC_FONT_SIZE_MEDIUM)
-                    .append(line)
-                    .append(ESC_FONT_SIZE_RESET)
-                    .append("\n");
-
-        }
-
-        // Handle addon object (grouped or flat)
         Object addonObj = item.opt("addon");
-        if (addonObj instanceof JSONObject) {
-            JSONObject addons = (JSONObject) addonObj;
 
-            // Check if this is grouped addons (BANQUET-style)
-            boolean isGroupedAddon = false;
-            for (Iterator<String> keyIterator = addons.keys(); keyIterator.hasNext(); ) {
-                Object val = addons.opt(keyIterator.next());
-                if (val instanceof JSONObject) {
-                    isGroupedAddon = true;
-                    break;
-                }
-            }
+        // -----------------------------
+        // ⭐ CASE 1: BANQUET NIGHTS OR GROUPED ADDON
+        // -----------------------------
+        if (category.equalsIgnoreCase("BANQUET NIGHTS")) {
 
-            if (category.equalsIgnoreCase("BANQUET NIGHTS") || isGroupedAddon) {
-                // Grouped addons (e.g. BANQUET NIGHTS)
-                for (Iterator<String> groupIterator = addons.keys(); groupIterator.hasNext(); ) {
+            if (addonObj instanceof JSONObject) {
+                JSONObject addonGroups = (JSONObject) addonObj;
+
+                for (Iterator<String> groupIterator = addonGroups.keys(); groupIterator.hasNext();) {
                     String groupName = groupIterator.next();
-                    JSONObject groupItems = addons.optJSONObject(groupName);
+                    JSONObject groupItems = addonGroups.optJSONObject(groupName);
+
                     if (groupItems != null && groupItems.length() > 0) {
+
+                        // Group name
                         formattedText.append(ESC_FONT_SIZE_MEDIUM)
                                 .append("\n").append(groupName)
-                                .append(ESC_FONT_SIZE_RESET).append("\n");
+                                .append(ESC_FONT_SIZE_RESET)
+                                .append("\n");
 
-                        for (Iterator<String> subItemIterator = groupItems.keys(); subItemIterator.hasNext(); ) {
+                        // Sub items
+                        for (Iterator<String> subItemIterator = groupItems.keys(); subItemIterator.hasNext();) {
                             String subItemKey = subItemIterator.next();
-                            JSONObject addonItem = groupItems.optJSONObject(subItemKey);
-                            if (addonItem != null) {
-                                printAddonItem(addonItem, formattedText);
+                            JSONObject subAddon = groupItems.optJSONObject(subItemKey);
+
+                            if (subAddon != null) {
+                                printAddonItem(subAddon, formattedText);
                             }
                         }
                     }
                 }
-                String other = item.optString("other");
-                if (other != null && !other.trim().isEmpty()) {
-                    formattedText.append("\n").append("Note: ").append(other).append("\n");
-                }
-            } else {
-                // Flat addon list
-                for (Iterator<String> addonIterator = addons.keys(); addonIterator.hasNext(); ) {
-                    String addonKey = addonIterator.next();
-                    JSONObject addonItem = addons.getJSONObject(addonKey);
-                    printAddonItem(addonItem, formattedText);
-                }
             }
-        } else if (addonObj instanceof JSONArray) {
+
+            // BANQUET → print NOTE only (no main item)
+            String other = item.optString("other");
+            if (other != null && !other.trim().isEmpty()) {
+                formattedText.append("Note: ").append(other).append("\n");
+            }
+
+            formattedText.append("\n");
+            return;
+        }
+
+        // -----------------------------
+        // ⭐ CASE 2: NORMAL CATEGORY
+        // -----------------------------
+        boolean addonFound = false;
+
+        // --------------------------------
+        // 1️⃣ PRINT ADDON FIRST (NO SPACE)
+        // --------------------------------
+        if (addonObj instanceof JSONArray) {
+
             JSONArray addonArray = (JSONArray) addonObj;
+
             for (int i = 0; i < addonArray.length(); i++) {
+
                 JSONObject addonItem = addonArray.optJSONObject(i);
-                if (addonItem != null) {
-                    printAddonItem(addonItem, formattedText);
+
+                if (addonItem == null) continue;
+
+                String adName = addonItem.optString("ad_name", "").trim();
+                String adQty  = addonItem.optString("ad_qty", "0").trim();
+
+                if (!adName.isEmpty() && !adQty.equals("0")) {
+
+                    addonFound = true;
+
+                    formattedText.append(ESC_FONT_SIZE_MEDIUM)
+                            .append(adQty).append("x ").append(adName)  // NO SPACES
+                            .append(ESC_FONT_SIZE_RESET)
+                            .append("\n");
                 }
             }
         }
 
-        // Optional 'other' field (only if not banquet)
-        if (!category.equalsIgnoreCase("BANQUET NIGHTS")) {
-            String other = item.optString("other");
-            if (other != null && !other.trim().isEmpty()) {
-                formattedText.append("\n").append("Note: ").append(other).append("\n");
-            }
+        // -------------------------------
+        // 2️⃣ PRINT MAIN ITEM (3 SPACES)
+        // -------------------------------
+        if (addonFound) {
+            formattedText.append(ESC_FONT_SIZE_MEDIUM)
+                    .append("   ")   // 3 spaces only when addon exists
+                    .append(qty).append("x ").append(name)
+                    .append(ESC_FONT_SIZE_RESET)
+                    .append("\n");
+        } else {
+            // No addon → normal printing
+            formattedText.append(ESC_FONT_SIZE_MEDIUM)
+                    .append(qty).append("x ").append(name)
+                    .append(ESC_FONT_SIZE_RESET)
+                    .append("\n");
+        }
+
+        // -------------------------------
+        // 3️⃣ PRINT NOTE (IF ANY)
+        // -------------------------------
+        String other = item.optString("other", "").trim();
+        if (!other.isEmpty()) {
+            formattedText.append("Note: ").append(other).append("\n");
         }
 
         formattedText.append("\n");
     }
 
-
     private void printAddonItem(JSONObject addonItem, StringBuilder formattedText) {
-        String adName = addonItem.optString("ad_name", "").trim();
-        String adQty = addonItem.optString("ad_qty", "0").trim();
 
-        // Skip if addon is empty or zero quantity
+        String adName = addonItem.optString("ad_name", "").trim();
+        String adQty  = addonItem.optString("ad_qty", "0").trim();
+
         if (!adName.isEmpty() && !adQty.equals("0")) {
             formattedText.append(ESC_FONT_SIZE_MEDIUM)
-                    .append("  ").append(adQty).append(" x ").append(adName)
-                    .append(ESC_FONT_SIZE_RESET).append("\n");
+                    .append("   ")          // 3 spaces indent for addon
+                    .append(adQty).append("x ").append(adName)
+                    .append(ESC_FONT_SIZE_RESET)
+                    .append("\n");
         }
     }
+
+
 
 
 
