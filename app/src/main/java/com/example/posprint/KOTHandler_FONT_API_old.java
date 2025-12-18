@@ -12,20 +12,53 @@ import org.json.JSONObject;
 
 import java.util.Iterator;
 
-public class KOTHandler_FONT_API {
+public class KOTHandler_FONT_API_old {
     Context context;
-    int lineLength = 45;
     JSONObject response, details;
     private static final String ESC_FONT_SIZE_LARGE = "\u001B" + "!" + (char) 51;  // Double width + height + bold
     private static final String ESC_FONT_SIZE_MEDIUM = "\u001B" + "!" + (char) 46;
     private static final String ESC_FONT_SIZE_SMALL = "\u001B" + "!" + (char) 23;
     private static final String ESC_FONT_SIZE_RESET = "\u001B" + "!" + (char) 0;
-    public KOTHandler_FONT_API(Context context, JSONObject response, JSONObject details) {
+    public KOTHandler_FONT_API_old(Context context, JSONObject response, JSONObject details) {
 
         this.context = context;
         this.response = response;
         this.details = details;
     }
+    /*public void handleKOT() {
+        try {
+            // Loop through each detail object (e.g., "1", "6")
+            for (Iterator<String> keyIterator = details.keys(); keyIterator.hasNext(); ) {
+                String key = keyIterator.next();
+                JSONObject objectDetails = details.getJSONObject(key);
+                // Get the printer ID and fetch printer details
+                int printerId = objectDetails.getInt("printer");
+                JSONObject printerDetails = getPrinterDetails(printerId, response.getJSONArray("printers"));
+                if (printerDetails == null) {
+                    Log.e(TAG, "Printer details not found for printer ID: " + printerId);
+                    continue; // Skip this object if printer details are missing
+                }
+                // Extract printer IP and port
+                String printerIP = printerDetails.optString("ip");
+                int printerPort = Integer.parseInt(printerDetails.optString("port", "9100")); // Default to 9100 if port is not found
+                // Format the text for the current detail object
+                String formattedText = formatKOTText(response, objectDetails);
+                // Create a new PrintConnection instance and execute
+
+                int kotPrintCopies = response.getJSONArray("printsettings")
+                        .getJSONObject(0)
+                        .optInt("kot_print_copies", 1); // default 1
+
+                // 🔥 Execute printing multiple times
+                for (int i = 0; i < kotPrintCopies; i++) {
+                    PrintConnection printConnection = new PrintConnection(printerIP, printerPort, formattedText);
+                    printConnection.execute();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling KOT", e);
+        }
+    }*/
 
     public void handleKOT() {
         try {
@@ -88,7 +121,7 @@ public class KOTHandler_FONT_API {
         try {
             JSONObject orderDetails = objectDetails.getJSONObject("order_details");
             formattedText.append(ESC_FONT_SIZE_LARGE)
-                    .append(centerText("EPOS - KOT", true))
+                    .append(centerText("KOT :Kitchen", true))
                     .append(ESC_FONT_SIZE_RESET).append("\n");
             formattedText.append("-".repeat(45)).append("\n");
 
@@ -192,10 +225,10 @@ public class KOTHandler_FONT_API {
                 JSONObject items = categories.getJSONObject(category);
 
                 formattedText.append(categoryFontCmd)
-                        .append(centerTextCat(category))
-                        .append(ESC_FONT_SIZE_RESET).append("\n\n");
+                        .append(centerText(category, true))
+                        .append(ESC_FONT_SIZE_RESET).append("\n");
 
-//                formattedText.append("-".repeat(45)).append("\n");
+                formattedText.append("-".repeat(45)).append("\n");
 
                 for (Iterator<String> itemIterator = items.keys(); itemIterator.hasNext(); ) {
                     String itemId = itemIterator.next();
@@ -204,96 +237,43 @@ public class KOTHandler_FONT_API {
                     // For "BANQUET NIGHTS", print addons directly
                     if (category.equalsIgnoreCase("BANQUET NIGHTS")) {
 
+                        // Addon is expected to be a nested JSONObject with categories
                         Object addonObj = item.opt("addon");
-
                         if (addonObj instanceof JSONObject) {
                             JSONObject addonGroups = (JSONObject) addonObj;
-
-                            for (Iterator<String> groupIterator = addonGroups.keys(); groupIterator.hasNext();) {
+                            for (Iterator<String> groupIterator = addonGroups.keys(); groupIterator.hasNext(); ) {
                                 String groupName = groupIterator.next();
                                 JSONObject groupItems = addonGroups.optJSONObject(groupName);
-
                                 if (groupItems != null && groupItems.length() > 0) {
-
-                                    // ⭐ Group title
-                                    formattedText.append(itemFontCmd)
-                                            .append("\n").append(groupName)
-                                            .append(ESC_FONT_SIZE_RESET)
-                                            .append("\n");
-
-                                    // ⭐ Sub-items under group
-                                    for (Iterator<String> subItemIterator = groupItems.keys(); subItemIterator.hasNext();) {
+                                    // Group title
+                                    formattedText.append(ESC_FONT_SIZE_MEDIUM).append("\n").append(groupName).append(ESC_FONT_SIZE_RESET).append("\n");
+                                    for (Iterator<String> subItemIterator = groupItems.keys(); subItemIterator.hasNext(); ) {
                                         String subItemKey = subItemIterator.next();
                                         JSONObject subAddon = groupItems.getJSONObject(subItemKey);
                                         String adName = subAddon.optString("ad_name");
                                         String adQty = subAddon.optString("ad_qty");
-
-                                        formattedText.append(
-                                                itemFontCmd +
-                                                        "  " + adQty + " x " + adName +
-                                                        ESC_FONT_SIZE_RESET + "\n"
-                                        );
+                                        formattedText.append(itemFontCmd).append("\n  ").append(adQty).append(" x ").append(adName).append(ESC_FONT_SIZE_RESET).append("\n");
                                     }
                                 }
                             }
                         }
 
-                        // NOTE section
+                        // Print 'other' if available
                         String other = item.optString("other");
                         if (other != null && !other.trim().isEmpty()) {
-                            formattedText.append("\nNote: ").append(other).append("\n");
+                            formattedText.append("\n").append("Note: ").append(other).append("\n");
                         }
                     }
                     else {
                         // For other categories: normal item + addons + other
-                        /*formattedText.append(itemFontCmd)
+                        formattedText.append(itemFontCmd)
                                 .append(item.optString("quantity")).append(" x ").append(item.optString("item"))
-                                .append(ESC_FONT_SIZE_RESET).append("\n");*/
+                                .append(ESC_FONT_SIZE_RESET).append("\n");
 
-                        String itemName = item.optString("item").toUpperCase();
-                        String qty = item.optString("quantity");
 
                         // Print addons if present
                         Object addonObj = item.opt("addon");
-
-                        if (addonObj instanceof JSONObject && ((JSONObject) addonObj).length() > 0) {
-                            JSONObject addons = (JSONObject) addonObj;
-
-                            // ⭐ 1️⃣ PRINT ADDONS FIRST
-                            for (Iterator<String> addonIterator = addons.keys(); addonIterator.hasNext();) {
-                                String addonKey = addonIterator.next();
-                                JSONObject addonItem = addons.getJSONObject(addonKey);
-
-                                String adName = addonItem.optString("ad_name").toUpperCase();
-                                String adQty = addonItem.optString("ad_qty");
-
-                                formattedText.append(
-                                        itemFontCmd +
-                                                adQty + " x " + adName +
-                                                ESC_FONT_SIZE_RESET +
-                                                "\n"
-                                );
-                            }
-
-                            // ⭐ 2️⃣ PRINT MAIN ITEM BELOW ADDON
-                            formattedText.append(
-                                    itemFontCmd +
-                                            "   " + qty + " x " + itemName +
-                                            ESC_FONT_SIZE_RESET +
-                                            "\n"
-                            );
-                        }else {
-                            // ⭐ CASE 2: No addon → normal item print
-                            formattedText.append(
-                                    itemFontCmd +
-                                            qty + " x " + itemName +
-                                            ESC_FONT_SIZE_RESET +
-                                            "\n"
-                            );
-                        }
-
-
-                        /*if (addonObj instanceof JSONObject) {
+                        if (addonObj instanceof JSONObject) {
                             JSONObject addons = (JSONObject) addonObj;
                             if (addons.length() > 0) {
                                 for (Iterator<String> addonIterator = addons.keys(); addonIterator.hasNext(); ) {
@@ -304,32 +284,22 @@ public class KOTHandler_FONT_API {
                                     formattedText.append(itemFontCmd).append("\n  ").append(adQty).append(" x ").append(adName).append(ESC_FONT_SIZE_RESET).append("\n");
                                 }
                             }
-                        }*/
+                        }
 
                         String other = item.optString("other");
                         if (other != null && !other.trim().isEmpty()) {
-                            formattedText .append("Note: ").append(other).append("\n");
+                            formattedText.append("\n").append("Note: ").append(other).append("\n");
                         }
                     }
                     formattedText.append("\n");
                 }
 
-//                formattedText.append("\n").append("-".repeat(45)).append("\n");
-            }
-            formattedText.append("-".repeat(45)).append("\n");
-
-            String specl_Instruction = orderDetails.optString("instruction","");
-
-            if (specl_Instruction != null && !specl_Instruction.trim().isEmpty() &&
-                    !specl_Instruction.equalsIgnoreCase("null")) {
-                formattedText.append("Special Instruction: ")
-                        .append(orderDetails.optString("instruction")).append("\n")
-                        .append("-".repeat(45)).append("\n");
+                formattedText.append("\n").append("-".repeat(45)).append("\n");
             }
 
-            /*formattedText.append("Special Instruction: ")
+            formattedText.append("Special Instruction: ")
                     .append(orderDetails.optString("instruction")).append("\n")
-                    .append("-".repeat(45)).append("\n");*/
+                    .append("-".repeat(45)).append("\n");
 
 
             String deliveryTime = orderDetails.optString("delivery_time", "");
@@ -375,11 +345,6 @@ public class KOTHandler_FONT_API {
         esc.append("\u001D").append("!").append((char)n);
 
         return esc.toString();
-    }
-
-    private String centerTextCat(String text) {
-        int spaces = (lineLength - text.length()) / 2;
-        return " ".repeat(Math.max(0, spaces)) + text + " ".repeat(Math.max(0, spaces));
     }
 
     private String centerText(String text, boolean isDoubleWidth) {

@@ -12,16 +12,15 @@ import org.json.JSONObject;
 
 import java.util.Iterator;
 
-public class KOTHandlerNewOnline {
+public class KOTHandlerNewOnline_old_working {
     Context context;
-    int lineLength = 45;
     JSONObject response, details;
     private static final String ESC_FONT_SIZE_LARGE = "\u001B" + "!" + (char) 51;
     private static final String ESC_FONT_SIZE_MEDIUM = "\u001B" + "!" + (char) 35;
     private static final String ESC_FONT_SIZE_SMALL = "\u001B" + "!" + (char) 23;
     private static final String ESC_FONT_SIZE_RESET = "\u001B" + "!" + (char) 0;
 
-    public KOTHandlerNewOnline(Context context, JSONObject response, JSONObject details) {
+    public KOTHandlerNewOnline_old_working(Context context, JSONObject response, JSONObject details) {
 
         this.context = context;
         this.response = response;
@@ -88,7 +87,7 @@ public class KOTHandlerNewOnline {
         try {
             JSONObject orderDetails = objectDetails.getJSONObject("order_details");
             formattedText.append(ESC_FONT_SIZE_LARGE)
-                    .append(centerText("ONLINE ORDER KOT", true))
+                    .append(centerText("KOT :Kitchen", true))
                     .append(ESC_FONT_SIZE_RESET).append("\n");
             formattedText.append("-".repeat(45)).append("\n");
 
@@ -159,30 +158,6 @@ public class KOTHandlerNewOnline {
 
             formattedText.append("-".repeat(45)).append("\n");
 
-
-
-            JSONObject printSettings = response
-                    .getJSONArray("printsettings")
-                    .getJSONObject(0);
-
-// CATEGORY FONT SETTINGS FROM API
-            String catFont = printSettings.optString("kot_category_font", "FONT_A");
-            int catWidth = printSettings.optInt("kot_category_width", 1);
-            int catHeight = printSettings.optInt("kot_category_height", 1);
-            int catEmphasis = printSettings.optInt("kot_category_emphasis", 0);
-
-// Build ESC/POS command for category
-            String categoryFontCmd = applyFontSettings(catFont, catWidth, catHeight, catEmphasis);
-
-            // ITEM FONT SETTINGS FROM API
-            String itemFont = printSettings.optString("kot_item_font", "FONT_A");
-            int itemWidth = printSettings.optInt("kot_item_width", 1);
-            int itemHeight = printSettings.optInt("kot_item_height", 1);
-            int itemEmphasis = printSettings.optInt("kot_item_emphasis", 0);
-
-// Build ESC/POS command for items/addons
-            String itemFontCmd = applyFontSettings(itemFont, itemWidth, itemHeight, itemEmphasis);
-
             // ✅ Handle Both JSONObject and JSONArray types
             Object categoriesObj = objectDetails.opt("categories");
 
@@ -195,10 +170,10 @@ public class KOTHandlerNewOnline {
                     String category = catIterator.next();
                     Object itemObj = categories.get(category);
 
-                    formattedText.append(categoryFontCmd)
-                            .append(centerTextCat(category))
-                            .append(ESC_FONT_SIZE_RESET).append("\n\n");
-//                            .append("-".repeat(45)).append("\n");
+                    formattedText.append(ESC_FONT_SIZE_MEDIUM)
+                            .append(centerText(category, true))
+                            .append(ESC_FONT_SIZE_RESET).append("\n")
+                            .append("-".repeat(45)).append("\n");
 
                     // If it's a JSONObject, iterate by keys
                     if (itemObj instanceof JSONObject) {
@@ -207,7 +182,7 @@ public class KOTHandlerNewOnline {
                         for (Iterator<String> itemIterator = items.keys(); itemIterator.hasNext(); ) {
                             String itemId = itemIterator.next();
                             JSONObject item = items.getJSONObject(itemId);
-                            formatItemBlock(item, category, formattedText, itemFontCmd);
+                            formatItemBlock(item, category, formattedText);
                         }
 
                         // If it's a JSONArray, iterate directly
@@ -216,23 +191,17 @@ public class KOTHandlerNewOnline {
 
                         for (int j = 0; j < itemsArray.length(); j++) {
                             JSONObject item = itemsArray.getJSONObject(j);
-                            formatItemBlock(item, category, formattedText, itemFontCmd);
+                            formatItemBlock(item, category, formattedText);
                         }
                     }
 
-//                    formattedText/*.append("\n")*/.append("-".repeat(45)).append("\n");
+                    formattedText/*.append("\n")*/.append("-".repeat(45)).append("\n");
                 }
             }
-            formattedText/*.append("\n")*/.append("-".repeat(45)).append("\n");
-
-            String specl_Instruction = orderDetails.optString("instruction","");
-
-            if (specl_Instruction != null && !specl_Instruction.trim().isEmpty() &&
-                    !specl_Instruction.equalsIgnoreCase("null")) {
-                formattedText.append("Special Instruction: ")
-                        .append(orderDetails.optString("instruction")).append("\n")
-                        .append("-".repeat(45)).append("\n");
-            }
+//            formattedText/*.append("\n")*/.append("-".repeat(45)).append("\n");
+            formattedText.append("Special Instruction: ")
+                    .append(orderDetails.optString("instruction")).append("\n")
+                    .append("-".repeat(45)).append("\n");
 
             String deliveryTime = orderDetails.optString("deliverytime", "");
 
@@ -256,34 +225,10 @@ public class KOTHandlerNewOnline {
         return formattedText.toString();
     }
 
-    private String applyFontSettings(String font, int width, int height, int emphasis) {
-        StringBuilder esc = new StringBuilder();
-
-        // --- Font type ---
-        if ("FONT_B".equals(font)) {
-            esc.append("\u001B").append("M").append((char)1);   // FONT B
-        } else {
-            esc.append("\u001B").append("M").append((char)0);   // FONT A
-        }
-
-        // --- Emphasis / Bold ---
-        esc.append("\u001B").append("E").append((char)(emphasis == 1 ? 1 : 0));
-
-        // --- Width & Height ---
-        int w = Math.max(1, width) - 1;
-        int h = Math.max(1, height) - 1;
-        int n = w | (h << 4);  // width + height combined
-
-        esc.append("\u001D").append("!").append((char)n);
-
-        return esc.toString();
-    }
-
-
-    private void formatItemBlock(JSONObject item, String category, StringBuilder formattedText, String itemFontCmd) throws JSONException {
+    private void formatItemBlock(JSONObject item, String category, StringBuilder formattedText) throws JSONException {
 
         String qty = item.optString("quantity");
-        String name = item.optString("item").toUpperCase();
+        String name = item.optString("item");
 
         Object addonObj = item.opt("addon");
 
@@ -348,14 +293,14 @@ public class KOTHandlerNewOnline {
 
                 if (addonItem == null) continue;
 
-                String adName = addonItem.optString("ad_name", "").trim().toUpperCase();
+                String adName = addonItem.optString("ad_name", "").trim();
                 String adQty  = addonItem.optString("ad_qty", "0").trim();
 
                 if (!adName.isEmpty() && !adQty.equals("0")) {
 
                     addonFound = true;
 
-                    formattedText.append(itemFontCmd)
+                    formattedText.append(ESC_FONT_SIZE_MEDIUM)
                             .append(adQty).append("x ").append(adName)  // NO SPACES
                             .append(ESC_FONT_SIZE_RESET)
                             .append("\n");
@@ -367,14 +312,14 @@ public class KOTHandlerNewOnline {
         // 2️⃣ PRINT MAIN ITEM (3 SPACES)
         // -------------------------------
         if (addonFound) {
-            formattedText.append(itemFontCmd)
+            formattedText.append(ESC_FONT_SIZE_MEDIUM)
                     .append("   ")   // 3 spaces only when addon exists
                     .append(qty).append("x ").append(name)
                     .append(ESC_FONT_SIZE_RESET)
                     .append("\n");
         } else {
             // No addon → normal printing
-            formattedText.append(itemFontCmd)
+            formattedText.append(ESC_FONT_SIZE_MEDIUM)
                     .append(qty).append("x ").append(name)
                     .append(ESC_FONT_SIZE_RESET)
                     .append("\n");
@@ -406,10 +351,7 @@ public class KOTHandlerNewOnline {
     }
 
 
-    private String centerTextCat(String text) {
-        int spaces = (lineLength - text.length()) / 2;
-        return " ".repeat(Math.max(0, spaces)) + text + " ".repeat(Math.max(0, spaces));
-    }
+
 
 
     private String centerText(String text, boolean isDoubleWidth) {

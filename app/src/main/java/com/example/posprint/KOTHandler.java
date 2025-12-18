@@ -14,6 +14,7 @@ public class KOTHandler {
 
     Context context;
     JSONObject response, details;
+    int lineLength = 35;
 
     private static final String ESC_FONT_SIZE_LARGE = "\u001B" + "!" + (char) 51;
     private static final String ESC_FONT_SIZE_MEDIUM = "\u001B" + "!" + (char) 35;
@@ -122,10 +123,10 @@ public class KOTHandler {
                 JSONObject items = categories.getJSONObject(category);
 
                 formattedText.append(ESC_FONT_SIZE_MEDIUM)
-                        .append(centerText(category, true))
+                        .append(centerTextCat(category))
                         .append(ESC_FONT_SIZE_RESET).append("\n");
 
-                formattedText.append("-".repeat(45)).append("\n");
+//                formattedText.append("-".repeat(45)).append("\n");
 
                 for (Iterator<String> itemIterator = items.keys(); itemIterator.hasNext(); ) {
                     String itemId = itemIterator.next();
@@ -178,7 +179,7 @@ public class KOTHandler {
                     // ⭐ NORMAL CATEGORIES
                     else {
 
-                        String itemName = item.optString("item");
+                        String itemName = item.optString("item").toUpperCase();
                         String qty = item.optString("quantity");
 
                         Object addonObj = item.opt("addon");
@@ -193,7 +194,7 @@ public class KOTHandler {
                                 String addonKey = addonIterator.next();
                                 JSONObject addonItem = addons.getJSONObject(addonKey);
 
-                                String adName = addonItem.optString("ad_name");
+                                String adName = addonItem.optString("ad_name").toUpperCase();
                                 String adQty = addonItem.optString("ad_qty");
 
                                 formattedText.append(
@@ -232,8 +233,10 @@ public class KOTHandler {
                     formattedText.append("\n");
                 }
 
-                formattedText.append("-".repeat(45)).append("\n");
+//                formattedText.append("-".repeat(45)).append("\n");
             }
+
+            formattedText.append("-".repeat(45)).append("\n");
 
             // Footer
             formattedText.append("Special Instruction: ")
@@ -449,6 +452,10 @@ public class KOTHandler {
         return " ".repeat(spaces) + text;
     }
 
+    private String centerTextCat(String text) {
+            int spaces = (lineLength - text.length()) / 2;
+            return " ".repeat(Math.max(0, spaces)) + text + " ".repeat(Math.max(0, spaces));
+        }
     private JSONObject getPrinterDetails(int printerId, JSONArray printersArray) {
         for (int i = 0; i < printersArray.length(); i++) {
             try {

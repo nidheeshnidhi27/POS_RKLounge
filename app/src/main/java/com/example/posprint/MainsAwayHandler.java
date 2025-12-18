@@ -15,6 +15,7 @@ public class MainsAwayHandler {
     private final JSONObject data;
     private final String printerIP;
     private final int printerPort;
+    int lineLength = 30;
 
     public MainsAwayHandler(Context context, JSONObject data, String printerIP, int printerPort) {
         this.context = context;
@@ -66,7 +67,7 @@ public class MainsAwayHandler {
 
         text.append("Message from POS:\n");
         text.append("-----------------------------------------\n");
-        text.append(ESC_FONT_SIZE_LARGE).append(centerText(message, true)).append(ESC_FONT_SIZE_RESET).append("\n");
+        text.append(ESC_FONT_SIZE_LARGE).append(centerTextMain(message)).append(ESC_FONT_SIZE_RESET).append("\n");
         text.append("-----------------------------------------\n\n");
         text.append(ESC_FONT_SIZE_MEDIUM).append(centerText("*** KITCHEN COPY ***", true)).append(ESC_FONT_SIZE_RESET).append("\n");
 
@@ -84,6 +85,11 @@ public class MainsAwayHandler {
         int spaces = (fullLineWidth - visualTextLength) / 2;
         if (spaces < 0) spaces = 0;
         return " ".repeat(spaces) + text;
+    }
+
+    private String centerTextMain(String text) {
+        int spaces = (lineLength - text.length()) / 2;
+        return " ".repeat(Math.max(0, spaces)) + text + " ".repeat(Math.max(0, spaces));
     }
 }
 

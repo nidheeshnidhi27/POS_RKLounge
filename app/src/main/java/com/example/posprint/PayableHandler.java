@@ -32,7 +32,7 @@ public class PayableHandler {
     private static final byte[] ESC_FONT_SIZE_MEDIUM = new byte[]{0x1B, 0x21, 0x0C};
     private static final byte[] SET_CODE_PAGE_CP437 = new byte[]{0x1B, 0x74, 0x00};
 
-    int lineLength = 40;
+    int lineLength = 48;
     String subtotalLabel = "Subtotal: ";
     String bagFeeLabel = "Bag Fee: ";
     String tipAmountLabel = "Tip Amount: ";
@@ -82,6 +82,14 @@ public class PayableHandler {
                 String outletName = outlet.getString("name");
                 String outletPhone = outlet.getString("phone");
                 String outletAddress = outlet.getString("address");
+
+                if(printType.equalsIgnoreCase("Before_Invoice")) {
+                    output.write(ESC_FONT_SIZE_LARGE);
+                    output.write(centerText("CUSTOMER RECEIPT").getBytes());
+                    output.write("\n".getBytes());
+                    output.write(ESC_FONT_SIZE_RESET);
+                }
+
                 output.write(ESC_FONT_SIZE_LARGE);
                 output.write(centerText(outletName).getBytes());
                 output.write("\n".getBytes());
